@@ -1,5 +1,3 @@
-require 'pry'
-
 module Printable
   def clear_screen
     system('clear') || system('cls')
@@ -43,28 +41,9 @@ module Printable
                   "their mottos, so you have more chances to win.")
   end
 
-  def print_opponent_info
-    clear_screen
-    paused_message("Your opponent for this game will be #{computer.name}.")
-    paused_message("#{computer.name}'s motto is: " \
-                  "\"#{computer.personality.motto}\"")
-    paused_message("The first to win #{RPSGame::WINNING_SCORE} "\
-                   "games will be the grand winner.")
-  end
-
   def print_moves
     puts "#{human.name} chose #{human.move}."
     puts "#{computer.name} chose #{computer.move}."
-  end
-
-  def print_round_winner
-    if human.move > computer.move
-      puts "#{human.name} won the round!"
-    elsif computer.move > human.move
-      puts "#{computer.name} won the round!"
-    else
-      puts "It's a tie!"
-    end
   end
 
   def print_score
@@ -118,45 +97,6 @@ module Continuable
     blank_space
     puts "                   /press return key to continue/"
     true if gets.chomp == ' '
-  end
-end
-
-module Askable
-  include Printable
-
-  def ask_user_name
-    name = ""
-    loop do
-      prompt("Please enter your name")
-      name = gets.chomp.capitalize
-      break unless name.empty?
-      puts "Sorry, you must enter a valid name."
-    end
-    self.name = name
-  end
-
-  def ask_user_choice
-    choice = nil
-    loop do
-      clear_screen
-      prompt("Please choose (r)ock, (p)aper, (s)cissors, (l)izard or spoc(k):")
-      choice = gets.chomp.downcase
-      break if Move::VALID_CHOICES.include?(choice)
-      paused_message("Sorry, that's an invalid choice, try again")
-    end
-    self.move = move_choice(choice)
-  end
-
-  def play_again?
-    blank_space
-    prompt("Do you want to play again? (y/n)")
-    answer = nil
-    loop do
-      answer = gets.chomp.downcase
-      break if ['yes', 'no', 'y', 'n'].include?(answer)
-      puts "Sorry, I didn't catch that"
-    end
-    ['yes', 'y'].include?(answer) ? true : false
   end
 end
 
@@ -269,7 +209,30 @@ class Player
 end
 
 class Human < Player
-  include Printable, Askable
+  include Printable
+
+  def ask_user_name
+    name = ""
+    loop do
+      prompt("Please enter your name")
+      name = gets.chomp.strip.capitalize
+      break unless name.empty?
+      puts "Sorry, you must enter a valid name."
+    end
+    self.name = name
+  end
+
+  def ask_user_choice
+    choice = nil
+    loop do
+      clear_screen
+      prompt("Please choose (r)ock, (p)aper, (s)cissors, (l)izard or spoc(k):")
+      choice = gets.chomp.downcase
+      break if Move::VALID_CHOICES.include?(choice)
+      paused_message("Sorry, that's an invalid choice, try again")
+    end
+    self.move = move_choice(choice)
+  end
 
   def set_name
     ask_user_name
@@ -281,7 +244,7 @@ class Human < Player
 end
 
 class Computer < Player
-  attr_reader :personality
+  attr_reader :personality, :name, :values, :motto
 
   def initialize
     @personality = [Edd.new, Airiam.new, MechanicalHound.new, Diana.new].sample
@@ -297,9 +260,7 @@ class Computer < Player
   end
 end
 
-class Edd
-  attr_reader :name, :values, :motto
-
+class Edd < Computer
   def initialize
     @name = "Edd"
     @values = Move::VALID_CHOICES + ([Move::VALID_CHOICES[2]] * 5)
@@ -307,9 +268,7 @@ class Edd
   end
 end
 
-class Airiam
-  attr_reader :name, :values, :motto
-
+class Airiam < Computer
   def initialize
     @name = "Airiam"
     @values = Move::VALID_CHOICES + ([Move::VALID_CHOICES[4]] * 5)
@@ -317,9 +276,7 @@ class Airiam
   end
 end
 
-class MechanicalHound
-  attr_reader :name, :values, :motto
-
+class MechanicalHound < Computer
   def initialize
     @name = "Mechanical Hound"
     @values = [Move::VALID_CHOICES[2]] + [Move::VALID_CHOICES[3]]
@@ -327,9 +284,7 @@ class MechanicalHound
   end
 end
 
-class Diana
-  attr_reader :name, :values, :motto
-
+class Diana < Computer
   def initialize
     @name = "Diana"
     @values = Move::VALID_CHOICES + ([Move::VALID_CHOICES[3]] * 5)
@@ -338,7 +293,7 @@ class Diana
 end
 
 class RPSGame
-  include Printable, Continuable, Askable
+  include Printable, Continuable
 
   WINNING_SCORE = 5
 
@@ -350,6 +305,23 @@ class RPSGame
     @human = Human.new
     @computer = Computer.new
     @history = []
+  end
+
+  def play
+    print_game_instructions
+    press_return_to_continue?
+    game
+  end
+
+  private
+
+  def print_opponent_info
+    clear_screen
+    paused_message("Your opponent for this game will be #{computer.name}.")
+    paused_message("#{computer.name}'s motto is: " \
+                  "\"#{computer.personality.motto}\"")
+    paused_message("The first to win #{RPSGame::WINNING_SCORE} "\
+                   "games will be the grand winner.")
   end
 
   def player_choices
@@ -388,16 +360,34 @@ class RPSGame
     end
   end
 
+  def print_round_winner
+    if human.move > computer.move
+      puts "#{human.name} won the round!"
+    elsif computer.move > human.move
+      puts "#{computer.name} won the round!"
+    else
+      puts "It's a tie!"
+    end
+  end
+
   def update_history
     history.last << round_result
   end
 
   def grand_winner?
-    if human.score == WINNING_SCORE || computer.score == WINNING_SCORE
-      true
-    else
-      false
+    human.score == WINNING_SCORE || computer.score == WINNING_SCORE
+  end
+
+  def play_again?
+    blank_space
+    prompt("Do you want to play again? (y/n)")
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if ['yes', 'no', 'y', 'n'].include?(answer)
+      puts "Sorry, I didn't catch that"
     end
+    ['yes', 'y'].include?(answer) ? true : false
   end
 
   def round
@@ -420,12 +410,6 @@ class RPSGame
     print_history
     print_goodbye_message
     blank_space
-  end
-
-  def play
-    print_game_instructions
-    press_return_to_continue?
-    game
   end
 end
 
