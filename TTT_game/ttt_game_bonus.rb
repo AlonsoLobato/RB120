@@ -163,7 +163,7 @@ class Player
 
   def initialize
     @score = 0
-    set_name
+    # player_name
   end
 
   def update_score
@@ -180,7 +180,8 @@ class Human < Player
 
   def initialize
     super
-    set_marker
+    player_name
+    player_marker
   end
 
   def ask_user_name
@@ -194,7 +195,7 @@ class Human < Player
     self.name = name
   end
 
-  def set_name
+  def player_name
     ask_user_name
   end
 
@@ -209,27 +210,32 @@ class Human < Player
     self.marker = marker
   end
 
-  def set_marker
+  def player_marker
     ask_user_marker
   end
 end
 
 class Computer < Player
-  def initialize(other_marker)
+  def initialize(other_marker, other_name)
     super()
-    set_marker(other_marker)
+    player_name(other_name)
+    player_marker(other_marker)
   end
 
-  def set_name
-    self.name = 'Computer'
+  def player_name(other_name)
+    self.name = if other_name == 'Computer'
+                  'Machine'
+                else
+                  'Computer'
+                end
   end
-  
-  def set_marker(other_marker)
-    if other_marker == 'O'
-      self.marker = 'X'
-    else
-      self.marker = 'O'
-    end
+
+  def player_marker(other_marker)
+    self.marker = if other_marker == 'O'
+                    'X'
+                  else
+                    'O'
+                  end
   end
 end
 
@@ -237,6 +243,7 @@ class TTTGame
   include Terminal
 
   POINTS_TO_WIN = 3
+  VALID_TURNS = { 1 => 'Me', 2 => 'My opponent', 3 => "I don't mind" }
 
   attr_reader :board, :human, :computer
 
@@ -245,8 +252,8 @@ class TTTGame
   def initialize
     @board = Board.new
     @human = Human.new
-    @computer = Computer.new(human.marker)
-    @current_marker = nil
+    @computer = Computer.new(human.marker, human.name)
+    # @current_marker
   end
 
   def play
@@ -297,7 +304,7 @@ class TTTGame
 
   def display_welcome_message
     puts "Welcome #{human.name}."
-    blank_space 
+    blank_space
   end
 
   def display_goodbye_message
@@ -305,7 +312,8 @@ class TTTGame
   end
 
   def display_board
-    puts "Your marker is: #{human.marker}    #{computer.name}'s marker is: #{computer.marker}"
+    puts "Your marker is: #{human.marker}    #{computer.name}'s " \
+         "marker is: #{computer.marker}"
     blank_space
     board.draw
     blank_space
@@ -348,27 +356,24 @@ class TTTGame
   end
 
   def ask_user_for_turns
-    valid_answers = [1, 2, 3]
     answer = nil
     prompt("Who do you want to play first?")
-  
     loop do
-      puts "  1. Me     2. The computer     3. I don't mind"
-      answer = gets.chomp.to_i
-      break if valid_answers.include?(answer)
+      VALID_TURNS.each { |k, v| puts "#{k}. #{v}    " }
+      answer = gets.chomp
+      answer = answer.to_i if answer.to_i.to_s == answer
+      break if VALID_TURNS.key?(answer)
       puts "Sorry, that's not a valid option"
     end
-  
-    return [1, 2].sample if answer == 3
-    answer
+    answer == 3 ? VALID_TURNS.values[0..1].sample : VALID_TURNS[answer]
   end
 
   def first_to_play
-    if ask_user_for_turns == 1
-      @current_marker = human.marker
-    else
-      @current_marker = computer.marker
-    end
+    @current_marker = if ask_user_for_turns == VALID_TURNS[1]
+                        human.marker
+                      else
+                        computer.marker
+                      end
   end
 
   def human_turn?
@@ -400,12 +405,26 @@ class TTTGame
          "#{display_empty_squares}")
     square = nil
     loop do
-      square = gets.chomp.to_i
+      square = gets.chomp
+      square = square.to_i if square.to_i.to_s == square
       break if board.unmarked_squares.include?(square)
       puts "Invalid choice, please try again"
     end
 
     board[square] = human.marker
+  end
+
+  def computer_moves
+    computer_moves = computer.marker
+    if find_computer_best_move == :attack_move
+      mark_strategic_square(computer.marker, computer_moves)
+    elsif find_computer_best_move == :defense_move
+      mark_strategic_square(human.marker, computer_moves)
+    elsif board.center_available?
+      mark_center_square(computer_moves)
+    else
+      mark_random_square(computer_moves)
+    end
   end
 
   def find_computer_best_move
@@ -416,16 +435,16 @@ class TTTGame
     end
   end
 
-  def computer_moves
-    if find_computer_best_move == :attack_move
-      board[board.square_threatened_by(computer.marker)] = computer.marker
-    elsif find_computer_best_move == :defense_move
-      board[board.square_threatened_by(human.marker)] = computer.marker
-    elsif board.center_available?
-      board[5] = computer.marker
-    else
-      board[board.unmarked_squares.sample] = computer.marker
-    end
+  def mark_strategic_square(input_marker, marker)
+    board[board.square_threatened_by(input_marker)] = marker
+  end
+
+  def mark_center_square(marker)
+    board[5] = marker
+  end
+
+  def mark_random_square(marker)
+    board[board.unmarked_squares.sample] = marker
   end
 
   def human_won?
@@ -471,7 +490,6 @@ class TTTGame
 
   def reset
     board.reset
-    @current_marker = nil
     clear
   end
 end
