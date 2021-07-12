@@ -163,7 +163,6 @@ class Player
 
   def initialize
     @score = 0
-    # player_name
   end
 
   def update_score
@@ -253,7 +252,6 @@ class TTTGame
     @board = Board.new
     @human = Human.new
     @computer = Computer.new(human.marker, human.name)
-    # @current_marker
   end
 
   def play
