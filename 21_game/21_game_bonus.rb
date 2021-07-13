@@ -24,7 +24,6 @@ module Terminal
 end
 
 module Instructions
-
   def want_instructions?
     answer = nil
     valid_answers = ['yes', 'y', 'no', 'n']
