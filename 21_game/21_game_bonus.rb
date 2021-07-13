@@ -24,14 +24,13 @@ module Terminal
 end
 
 module Instructions
-  include Terminal
 
   def want_instructions?
     answer = nil
     valid_answers = ['yes', 'y', 'no', 'n']
     loop do
       prompt "Do you want to read the instructions before you play (y/n)?"
-      answer = gets.chomp.downcase
+      answer = gets.chomp.strip.downcase
       break if valid_answers.include?(answer)
       prompt "Sorry, I didn't catch that..."
     end
@@ -138,7 +137,8 @@ class Banner
 end
 
 class Card
-  CARDS = [[*('2'..'10'), 'J', 'Q', 'K', 'A'], ['♣', '♦', '♥', '♠']]
+  SUITS = [*('2'..'10'), 'J', 'Q', 'K', 'A']
+  NUMBERS = ['♣', '♦', '♥', '♠']
 
   attr_accessor :number, :suit
 
@@ -157,8 +157,8 @@ class Deck
   end
 
   def initialize_deck
-    Card::CARDS[0].each do |number|
-      Card::CARDS[1].each do |suit|
+    Card::SUITS.each do |number|
+      Card::NUMBERS.each do |suit|
         @cards << Card.new(number, suit)
       end
     end
@@ -241,26 +241,6 @@ class User < Player
     user_name
   end
 
-  private
-
-  def ask_user_name
-    name = ""
-    loop do
-      blank_space
-      prompt "Please enter your name."
-      name = gets.chomp.strip.capitalize
-      break unless name.empty?
-      puts "Sorry, you must enter a valid name."
-    end
-    self.name = name
-  end
-
-  def user_name
-    ask_user_name
-  end
-
-  public
-
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def display_cards
     fcs = cards[0].suit                 # fcs stands for 1st card suit
@@ -314,7 +294,7 @@ class User < Player
       blank_space
       prompt "Please enter '(H)it' if you want another " \
              "card or '(S)tay' if you don't"
-      answer = gets.chomp.downcase
+      answer = gets.chomp.strip.downcase
       break if valid_answers.include?(answer)
       puts "Sorry, that's not a valid answer"
     end
@@ -322,6 +302,24 @@ class User < Player
     ['stay', 's'].include?(answer)
   end
   # rubocop:enable Metrics/MethodLength
+
+  private
+
+  def ask_user_name
+    name = ""
+    loop do
+      blank_space
+      prompt "Please enter your name."
+      name = gets.chomp.strip.capitalize
+      break unless name.empty?
+      puts "Sorry, you must enter a valid name."
+    end
+    self.name = name
+  end
+
+  def user_name
+    ask_user_name
+  end
 end
 
 class Dealer < Player
@@ -331,18 +329,6 @@ class Dealer < Player
     super()
     dealer_name(other_name)
   end
-
-  private
-
-  def dealer_name(other_name)
-    self.name = if other_name == 'Dealer'
-                  'Boss'
-                else
-                  'Dealer'
-                end
-  end
-
-  public
 
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def display_cards
@@ -367,6 +353,16 @@ class Dealer < Player
 
   def stay?
     cards_corrected_value >= DEALER_MAX_RISK
+  end
+
+  private
+
+  def dealer_name(other_name)
+    self.name = if other_name == 'Dealer'
+                  'Boss'
+                else
+                  'Dealer'
+                end
   end
 end
 
@@ -497,7 +493,7 @@ class Game
     prompt "Do you want to play again? (y/n)"
     answer = nil
     loop do
-      answer = gets.chomp.downcase
+      answer = gets.chomp.strip.downcase
       break if ['yes', 'no', 'y', 'n'].include?(answer)
       puts "Sorry, I didn't catch that"
     end
